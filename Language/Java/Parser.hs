@@ -415,26 +415,29 @@ blockStmt =
         return $ LocalVars m t vds) <|>
     BlockStmt <$> stmt
 
-stmt :: P Stmt
+stmt :: P StmtPos
 stmt = ifStmt <|> whileStmt <|> forStmt <|> labeledStmt <|> stmtNoTrail
   where
     ifStmt = do
         tok KW_If
         e   <- parens exp
+        pos <- getPosition
         (try $
             do th <- stmtNSI
                tok KW_Else
                el <- stmt
-               return $ IfThenElse e th el) <|>
+               return $ StmtPos (IfThenElse e th el) pos) <|>
            (do th <- stmt
-               return $ IfThen e th)
+               return $ StmtPos (IfThen e th) pos)
     whileStmt = do
         tok KW_While
         e   <- parens exp
         s   <- stmt
-        return $ While e s
+        pos <- getPosition
+        return $ StmtPos (While e s) pos
     forStmt = do
         tok KW_For
+        pos <- getPosition
         f <- parens $
             (try $ do
                 fi <- opt forInit
@@ -442,119 +445,140 @@ stmt = ifStmt <|> whileStmt <|> forStmt <|> labeledStmt <|> stmtNoTrail
                 e  <- opt exp
                 semiColon
                 fu <- opt forUp
-                return $ BasicFor fi e fu) <|>
+                return $ (\a -> StmtPos (BasicFor fi e fu a) pos)) <|>
             (do ms <- list modifier
                 t  <- ttype
                 i  <- ident
                 colon
                 e  <- exp
-                return $ EnhancedFor ms t i e)
+                return $ (\a -> StmtPos (EnhancedFor ms t i e a) pos))
         s <- stmt
         return $ f s
     labeledStmt = try $ do
+        pos <- getPosition
         lbl <- ident
         colon
         s   <- stmt
-        return $ Labeled lbl s
+        return $ StmtPos (Labeled lbl s) pos
 
-stmtNSI :: P Stmt
+stmtNSI :: P StmtPos
 stmtNSI = ifStmt <|> whileStmt <|> forStmt <|> labeledStmt <|> stmtNoTrail
   where
     ifStmt = do
         tok KW_If
         e  <- parens exp
+        pos <- getPosition
         th <- stmtNSI
         tok KW_Else
         el <- stmtNSI
-        return $ IfThenElse e th el
+        return $ StmtPos (IfThenElse e th el) pos
     whileStmt = do
         tok KW_While
+        pos <- getPosition
         e <- parens exp
         s <- stmtNSI
-        return $ While e s
+        return $ StmtPos (While e s) pos
     forStmt = do
         tok KW_For
         f <- parens $ (try $ do
             fi <- opt forInit
+            pos <- getPosition
             semiColon
             e  <- opt exp
             semiColon
             fu <- opt forUp
-            return $ BasicFor fi e fu)
+            return $ (\a -> StmtPos (BasicFor fi e fu a) pos))
             <|> (do
             ms <- list modifier
+            pos <- getPosition
             t  <- ttype
             i  <- ident
             colon
             e  <- exp
-            return $ EnhancedFor ms t i e)
+            return $ (\a -> StmtPos (EnhancedFor ms t i e a) pos))
         s <- stmtNSI
         return $ f s
     labeledStmt = try $ do
         i <- ident
+        pos <- getPosition
         colon
         s <- stmtNSI
-        return $ Labeled i s
+        return $ StmtPos (Labeled i s) pos
 
-stmtNoTrail :: P Stmt
+stmtNoTrail :: P StmtPos
 stmtNoTrail =
     -- empty statement
-    const Empty <$> semiColon <|>
+    (do semiColon
+        pos <- getPosition
+        return $ StmtPos Empty pos) <|>
     -- inner block
-    StmtBlock <$> block <|>
+    (do pos <- getPosition
+        b <- block
+        return $ StmtPos (StmtBlock b) pos) <|>
     -- assertions
     (endSemi $ do
         tok KW_Assert
+        pos <- getPosition
         e   <- exp
         me2 <- opt $ colon >> exp
-        return $ Assert e me2) <|>
+        return $ StmtPos (Assert e me2) pos) <|>
     -- switch stmts
     (do tok KW_Switch
         e  <- parens exp
+        pos <- getPosition
         sb <- switchBlock
-        return $ Switch e sb) <|>
+        return $ StmtPos (Switch e sb) pos) <|>
     -- do-while loops
     (endSemi $ do
         tok KW_Do
+        pos <- getPosition
         s <- stmt
         tok KW_While
         e <- parens exp
-        return $ Do s e) <|>
+        return $ StmtPos (Do s e) pos) <|>
     -- break
     (endSemi $ do
         tok KW_Break
+        pos <- getPosition
         mi <- opt ident
-        return $ Break mi) <|>
+        return $ StmtPos (Break mi) pos) <|>
     -- continue
     (endSemi $ do
         tok KW_Continue
+        pos <- getPosition
         mi <- opt ident
-        return $ Continue mi) <|>
+        return $ StmtPos (Continue mi) pos) <|>
     -- return
     (endSemi $ do
         tok KW_Return
+        pos <- getPosition
         me <- opt exp
-        return $ Return me) <|>
+        return $ StmtPos (Return me) pos) <|>
     -- synchronized
     (do tok KW_Synchronized
         e <- parens exp
+        pos <- getPosition
         b <- block
-        return $ Synchronized e b) <|>
+        return $ StmtPos (Synchronized e b) pos) <|>
     -- throw
     (endSemi $ do
         tok KW_Throw
+        pos <- getPosition
         e <- exp
-        return $ Throw e) <|>
+        return $ StmtPos (Throw e) pos) <|>
     -- try-catch, both with and without a finally clause
     (do tok KW_Try
         b <- block
+        pos <- getPosition
         c <- list catch
         mf <- opt $ tok KW_Finally >> block
         -- TODO: here we should check that there exists at
         -- least one catch or finally clause
-        return $ Try b c mf) <|>
+        return $ StmtPos (Try b c mf) pos) <|>
     -- expressions as stmts
-    ExpStmt <$> endSemi stmtExp
+    (do pos <- getPosition
+        e <- endSemi stmtExp
+        return $ StmtPos (ExpStmt e) pos)
 
 -- For loops
 

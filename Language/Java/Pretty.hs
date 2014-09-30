@@ -190,6 +190,9 @@ instance Pretty BlockStmt where
     hsep (map (prettyPrec p) mods) <+> prettyPrec p t <+> 
       hsep (punctuate comma $ map (prettyPrec p) vds) <> semi
 
+instance Pretty StmtPos where
+  prettyPrec p (StmtPos s _) = prettyPrec p s
+
 instance Pretty Stmt where
   prettyPrec p (StmtBlock block) = prettyPrec p block
   prettyPrec p (IfThen c th) =
@@ -529,8 +532,8 @@ instance Pretty Ident where
 
 -----------------------------------------------------------------------
 -- Help functionality
-prettyNestedStmt :: Int -> Stmt -> Doc
-prettyNestedStmt prio p@(StmtBlock b) = prettyPrec prio p
+prettyNestedStmt :: Int -> StmtPos -> Doc
+prettyNestedStmt prio p@(StmtPos (StmtBlock b) _) = prettyPrec prio p
 prettyNestedStmt prio p = nest 2 (prettyPrec prio p)
 
 maybePP :: Pretty a => Int -> Maybe a -> Doc

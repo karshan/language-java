@@ -2,6 +2,7 @@
 module Language.Java.Syntax where
 
 import Data.Data
+import Text.Parsec.Pos
 
 #define DERIVE deriving (Eq,Ord,Show,Typeable,Data)
 
@@ -189,27 +190,29 @@ data Block = Block [BlockStmt]
 -- | A block statement is either a normal statement, a local
 --   class declaration or a local variable declaration.
 data BlockStmt
-    = BlockStmt Stmt
+    = BlockStmt StmtPos
     | LocalClass ClassDecl
     | LocalVars [Modifier] Type [VarDecl]
   DERIVE
 
+data StmtPos = StmtPos Stmt SourcePos
+  DERIVE
 
 -- | A Java statement.
 data Stmt
     -- | A statement can be a nested block.
     = StmtBlock Block
     -- | The @if-then@ statement allows conditional execution of a statement.
-    | IfThen Exp Stmt
+    | IfThen Exp StmtPos
     -- | The @if-then-else@ statement allows conditional choice of two statements, executing one or the other but not both.
-    | IfThenElse Exp Stmt Stmt
+    | IfThenElse Exp StmtPos StmtPos
     -- | The @while@ statement executes an expression and a statement repeatedly until the value of the expression is false.
-    | While Exp Stmt
+    | While Exp StmtPos
     -- | The basic @for@ statement executes some initialization code, then executes an expression, a statement, and some
     --   update code repeatedly until the value of the expression is false.
-    | BasicFor (Maybe ForInit) (Maybe Exp) (Maybe [Exp]) Stmt
+    | BasicFor (Maybe ForInit) (Maybe Exp) (Maybe [Exp]) StmtPos
     -- | The enhanced @for@ statement iterates over an array or a value of a class that implements the @iterator@ interface.
-    | EnhancedFor [Modifier] Type Ident Exp Stmt
+    | EnhancedFor [Modifier] Type Ident Exp StmtPos
     -- | An empty statement does nothing.
     | Empty
     -- | Certain kinds of expressions may be used as statements by following them with semicolons:
@@ -222,7 +225,7 @@ data Stmt
     -- | The switch statement transfers control to one of several statements depending on the value of an expression.
     | Switch Exp [SwitchBlock]
     -- | The @do@ statement executes a statement and an expression repeatedly until the value of the expression is false.
-    | Do Stmt Exp
+    | Do StmtPos Exp
     -- | A @break@ statement transfers control out of an enclosing statement.
     | Break (Maybe Ident)
     -- | A @continue@ statement may occur only in a while, do, or for statement. Control passes to the loop-continuation
@@ -241,7 +244,7 @@ data Stmt
     --   and no matter whether a catch clause is first given control.
     | Try Block [Catch] (Maybe {- finally -} Block)
     -- | Statements may have label prefixes.
-    | Labeled Ident Stmt
+    | Labeled Ident StmtPos
   DERIVE
 
 -- | If a value is thrown and the try statement has one or more catch clauses that can catch it, then control will be
