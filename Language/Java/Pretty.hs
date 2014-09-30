@@ -190,9 +190,6 @@ instance Pretty BlockStmt where
     hsep (map (prettyPrec p) mods) <+> prettyPrec p t <+> 
       hsep (punctuate comma $ map (prettyPrec p) vds) <> semi
 
-instance Pretty StmtPos where
-  prettyPrec p (StmtPos s _) = prettyPrec p s
-
 instance Pretty Stmt where
   prettyPrec p (StmtBlock block) = prettyPrec p block
   prettyPrec p (IfThen c th) =
@@ -523,17 +520,17 @@ ppResultType p (Just a) = prettyPrec p a
 -- Names and identifiers
 
 instance Pretty Name where
-  prettyPrec p (Name is) =
+  prettyPrec p (Name _ is) =
     hcat (punctuate (char '.') $ map (prettyPrec p) is)
 
 instance Pretty Ident where
-  prettyPrec p (Ident s) = text s
+  prettyPrec p (Ident _ s) = text s
 
 
 -----------------------------------------------------------------------
 -- Help functionality
-prettyNestedStmt :: Int -> StmtPos -> Doc
-prettyNestedStmt prio p@(StmtPos (StmtBlock b) _) = prettyPrec prio p
+prettyNestedStmt :: Int -> Stmt -> Doc
+prettyNestedStmt prio p@(StmtBlock b) = prettyPrec prio p
 prettyNestedStmt prio p = nest 2 (prettyPrec prio p)
 
 maybePP :: Pretty a => Int -> Maybe a -> Doc

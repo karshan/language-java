@@ -415,29 +415,26 @@ blockStmt =
         return $ LocalVars m t vds) <|>
     BlockStmt <$> stmt
 
-stmt :: P StmtPos
+stmt :: P Stmt
 stmt = ifStmt <|> whileStmt <|> forStmt <|> labeledStmt <|> stmtNoTrail
   where
     ifStmt = do
         tok KW_If
         e   <- parens exp
-        pos <- getPosition
         (try $
             do th <- stmtNSI
                tok KW_Else
                el <- stmt
-               return $ StmtPos (IfThenElse e th el) pos) <|>
+               return $ IfThenElse e th el) <|>
            (do th <- stmt
-               return $ StmtPos (IfThen e th) pos)
+               return $ IfThen e th)
     whileStmt = do
         tok KW_While
         e   <- parens exp
         s   <- stmt
-        pos <- getPosition
-        return $ StmtPos (While e s) pos
+        return $ While e s
     forStmt = do
         tok KW_For
-        pos <- getPosition
         f <- parens $
             (try $ do
                 fi <- opt forInit
@@ -445,140 +442,119 @@ stmt = ifStmt <|> whileStmt <|> forStmt <|> labeledStmt <|> stmtNoTrail
                 e  <- opt exp
                 semiColon
                 fu <- opt forUp
-                return $ (\a -> StmtPos (BasicFor fi e fu a) pos)) <|>
+                return $ BasicFor fi e fu) <|>
             (do ms <- list modifier
                 t  <- ttype
                 i  <- ident
                 colon
                 e  <- exp
-                return $ (\a -> StmtPos (EnhancedFor ms t i e a) pos))
+                return $ EnhancedFor ms t i e)
         s <- stmt
         return $ f s
     labeledStmt = try $ do
-        pos <- getPosition
         lbl <- ident
         colon
         s   <- stmt
-        return $ StmtPos (Labeled lbl s) pos
+        return $ Labeled lbl s
 
-stmtNSI :: P StmtPos
+stmtNSI :: P Stmt
 stmtNSI = ifStmt <|> whileStmt <|> forStmt <|> labeledStmt <|> stmtNoTrail
   where
     ifStmt = do
         tok KW_If
         e  <- parens exp
-        pos <- getPosition
         th <- stmtNSI
         tok KW_Else
         el <- stmtNSI
-        return $ StmtPos (IfThenElse e th el) pos
+        return $ IfThenElse e th el
     whileStmt = do
         tok KW_While
-        pos <- getPosition
         e <- parens exp
         s <- stmtNSI
-        return $ StmtPos (While e s) pos
+        return $ While e s
     forStmt = do
         tok KW_For
         f <- parens $ (try $ do
             fi <- opt forInit
-            pos <- getPosition
             semiColon
             e  <- opt exp
             semiColon
             fu <- opt forUp
-            return $ (\a -> StmtPos (BasicFor fi e fu a) pos))
+            return $ BasicFor fi e fu)
             <|> (do
             ms <- list modifier
-            pos <- getPosition
             t  <- ttype
             i  <- ident
             colon
             e  <- exp
-            return $ (\a -> StmtPos (EnhancedFor ms t i e a) pos))
+            return $ EnhancedFor ms t i e)
         s <- stmtNSI
         return $ f s
     labeledStmt = try $ do
         i <- ident
-        pos <- getPosition
         colon
         s <- stmtNSI
-        return $ StmtPos (Labeled i s) pos
+        return $ Labeled i s
 
-stmtNoTrail :: P StmtPos
+stmtNoTrail :: P Stmt
 stmtNoTrail =
     -- empty statement
-    (do semiColon
-        pos <- getPosition
-        return $ StmtPos Empty pos) <|>
+    const Empty <$> semiColon <|>
     -- inner block
-    (do pos <- getPosition
-        b <- block
-        return $ StmtPos (StmtBlock b) pos) <|>
+    StmtBlock <$> block <|>
     -- assertions
     (endSemi $ do
         tok KW_Assert
-        pos <- getPosition
         e   <- exp
         me2 <- opt $ colon >> exp
-        return $ StmtPos (Assert e me2) pos) <|>
+        return $ Assert e me2) <|>
     -- switch stmts
     (do tok KW_Switch
         e  <- parens exp
-        pos <- getPosition
         sb <- switchBlock
-        return $ StmtPos (Switch e sb) pos) <|>
+        return $ Switch e sb) <|>
     -- do-while loops
     (endSemi $ do
         tok KW_Do
-        pos <- getPosition
         s <- stmt
         tok KW_While
         e <- parens exp
-        return $ StmtPos (Do s e) pos) <|>
+        return $ Do s e) <|>
     -- break
     (endSemi $ do
         tok KW_Break
-        pos <- getPosition
         mi <- opt ident
-        return $ StmtPos (Break mi) pos) <|>
+        return $ Break mi) <|>
     -- continue
     (endSemi $ do
         tok KW_Continue
-        pos <- getPosition
         mi <- opt ident
-        return $ StmtPos (Continue mi) pos) <|>
+        return $ Continue mi) <|>
     -- return
     (endSemi $ do
         tok KW_Return
-        pos <- getPosition
         me <- opt exp
-        return $ StmtPos (Return me) pos) <|>
+        return $ Return me) <|>
     -- synchronized
     (do tok KW_Synchronized
         e <- parens exp
-        pos <- getPosition
         b <- block
-        return $ StmtPos (Synchronized e b) pos) <|>
+        return $ Synchronized e b) <|>
     -- throw
     (endSemi $ do
         tok KW_Throw
-        pos <- getPosition
         e <- exp
-        return $ StmtPos (Throw e) pos) <|>
+        return $ Throw e) <|>
     -- try-catch, both with and without a finally clause
     (do tok KW_Try
         b <- block
-        pos <- getPosition
         c <- list catch
         mf <- opt $ tok KW_Finally >> block
         -- TODO: here we should check that there exists at
         -- least one catch or finally clause
-        return $ StmtPos (Try b c mf) pos) <|>
+        return $ Try b c mf) <|>
     -- expressions as stmts
-    (do pos <- getPosition
-        e <- endSemi stmtExp
-        return $ StmtPos (ExpStmt e) pos)
+    ExpStmt <$> endSemi stmtExp
 
 -- For loops
 
@@ -1109,12 +1085,17 @@ refTypeArgs = angles refTypeList
 -- Names
 
 name :: P Name
-name = Name <$> seplist1 ident period
+name = do
+    pos <- getPosition
+    a <- seplist1 ident period
+    return $ Name pos a
 
 ident :: P Ident
-ident = javaToken $ \t -> case t of
-    IdentTok s -> Just $ Ident s
-    _ -> Nothing
+ident = do
+    pos <- getPosition
+    javaToken $ \t -> case t of
+      IdentTok s -> Just $ Ident (Just pos) s
+      _ -> Nothing
 
 ------------------------------------------------------------
 
