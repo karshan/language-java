@@ -27,7 +27,7 @@ class Pretty a where
 -----------------------------------------------------------------------
 -- Packages
 
-instance Pretty CompilationUnit where
+instance (Show a, Pretty a) => Pretty (CompilationUnit a) where
   prettyPrec p (CompilationUnit mpd ids tds) =
     vcat $ ((maybePP p mpd): map (prettyPrec p) ids) ++ map (prettyPrec p) tds
 
@@ -43,11 +43,11 @@ instance Pretty ImportDecl where
 -----------------------------------------------------------------------
 -- Declarations
 
-instance Pretty TypeDecl where
+instance (Show a, Pretty a) => Pretty (TypeDecl a) where
   prettyPrec p (ClassTypeDecl     cd) = prettyPrec p cd
   prettyPrec p (InterfaceTypeDecl id) = prettyPrec p id
 
-instance Pretty ClassDecl where
+instance (Show a, Pretty a) => Pretty (ClassDecl a) where
   prettyPrec p (EnumDecl mods ident impls body) =
     hsep [hsep (map (prettyPrec p) mods)
           , text "enum"
@@ -64,24 +64,24 @@ instance Pretty ClassDecl where
           , ppImplements p impls
          ] $$ prettyPrec p body
 
-instance Pretty ClassBody where
+instance (Show a, Pretty a) => Pretty (ClassBody a) where
   prettyPrec p (ClassBody ds) =
     braceBlock (map (prettyPrec p) ds)
     
-instance Pretty EnumBody where
+instance (Show a, Pretty a) => Pretty (EnumBody a) where
   prettyPrec p (EnumBody cs ds) =
     braceBlock $ 
         punctuate comma (map (prettyPrec p) cs) ++ 
         opt (not $ null ds) semi : map (prettyPrec p) ds
 
-instance Pretty EnumConstant where
+instance (Show a, Pretty a) => Pretty (EnumConstant a) where
   prettyPrec p (EnumConstant ident args mBody) =
     prettyPrec p ident 
         -- needs special treatment since even the parens are optional
         <> opt (not $ null args) (ppArgs p args) 
       $$ maybePP p mBody
 
-instance Pretty InterfaceDecl where
+instance (Show a, Pretty a) => Pretty (InterfaceDecl a) where
   prettyPrec p (InterfaceDecl mods ident tParams impls body) =
     hsep [hsep (map (prettyPrec p) mods)
           , text "interface"
@@ -90,16 +90,16 @@ instance Pretty InterfaceDecl where
           , ppImplements p impls
          ] $$ prettyPrec p body
 
-instance Pretty InterfaceBody where
+instance (Show a, Pretty a) => Pretty (InterfaceBody a) where
   prettyPrec p (InterfaceBody mds) =
     braceBlock (map (prettyPrec p) mds)
 
-instance Pretty Decl where
+instance (Show a, Pretty a) => Pretty (Decl a) where
   prettyPrec p (MemberDecl md) = prettyPrec p md
   prettyPrec p (InitDecl b bl) =
     opt b (text "static") <+> prettyPrec p bl
 
-instance Pretty MemberDecl where
+instance (Show a, Pretty a) => Pretty (MemberDecl a) where
   prettyPrec p (FieldDecl mods t vds) =
     hsep (map (prettyPrec p) mods ++ prettyPrec p t:punctuate (text ",") (map (prettyPrec p) vds)) <> semi
 
@@ -123,7 +123,7 @@ instance Pretty MemberDecl where
   prettyPrec p (MemberClassDecl cd) = prettyPrec p cd
   prettyPrec p (MemberInterfaceDecl id) = prettyPrec p id
 
-instance Pretty VarDecl where
+instance (Show a, Pretty a) => Pretty (VarDecl a) where
   prettyPrec p (VarDecl vdId Nothing) = prettyPrec p vdId
   prettyPrec p (VarDecl vdId (Just ie)) =
 	(prettyPrec p vdId <+> char '=') <+> prettyPrec p ie
@@ -132,26 +132,26 @@ instance Pretty VarDeclId where
   prettyPrec p (VarId ident) = prettyPrec p ident
   prettyPrec p (VarDeclArray vId) = prettyPrec p vId
 
-instance Pretty VarInit where
+instance (Show a, Pretty a) => Pretty (VarInit a) where
   prettyPrec p (InitExp e) = prettyPrec p e
   prettyPrec p (InitArray (ArrayInit ai)) =
 	text "{" <+> hsep (punctuate comma (map (prettyPrec p) ai)) <+> text "}"
 
-instance Pretty FormalParam where
+instance (Show a, Pretty a) => Pretty (FormalParam a) where
   prettyPrec p (FormalParam mods t b vId) =
     hsep [hsep (map (prettyPrec p) mods)
           , prettyPrec p t <> opt b (text "...")
           , prettyPrec p vId
          ]
 
-instance Pretty MethodBody where
+instance (Show a, Pretty a) => Pretty (MethodBody a) where
   prettyPrec p (MethodBody mBlock) = maybe semi (prettyPrec p) mBlock
 
-instance Pretty ConstructorBody where
+instance (Show a, Pretty a) => Pretty (ConstructorBody a) where
   prettyPrec p (ConstructorBody mECI stmts) =
     braceBlock $ maybePP p mECI : map (prettyPrec p) stmts
 
-instance Pretty ExplConstrInv where
+instance (Show a, Pretty a) => Pretty (ExplConstrInv a) where
   prettyPrec p (ThisInvoke rts args) =
     ppTypeParams p rts <+> text "this" <> ppArgs p args <> semi
   prettyPrec p (SuperInvoke rts args) =
@@ -160,11 +160,11 @@ instance Pretty ExplConstrInv where
     prettyPrec p e <> char '.' <>
       ppTypeParams p rts <+> text "super" <> ppArgs p args <> semi
 
-instance Pretty Modifier where
+instance (Show a, Pretty a) => Pretty (Modifier a) where
   prettyPrec p (Annotation ann) = prettyPrec p ann $+$ nest (-1) ( text "")
   prettyPrec p mod = text . map toLower $ show mod
 
-instance Pretty Annotation where
+instance (Show a, Pretty a) => Pretty (Annotation a) where
   prettyPrec p x = text "@" <> prettyPrec p (annName x) <> case x of
          MarkerAnnotation {} -> text ""
          SingleElementAnnotation {} -> text "(" <> prettyPrec p (annValue x) <> text ")"  
@@ -172,7 +172,7 @@ instance Pretty Annotation where
 
 ppEVList p = hsep . punctuate comma . map (\(k,v) -> prettyPrec p k <+> text "=" <+> prettyPrec p v)
 
-instance Pretty ElementValue where
+instance (Show a, Pretty a) => Pretty (ElementValue a) where
   prettyPrec p (EVVal vi) = prettyPrec p vi
   prettyPrec p (EVAnn ann) = prettyPrec p ann
 
@@ -180,17 +180,17 @@ instance Pretty ElementValue where
 -- Statements
 
 
-instance Pretty Block where
+instance (Show a, Pretty a) => Pretty (Block a) where
   prettyPrec p (Block stmts) = braceBlock $ map (prettyPrec p) stmts
 
-instance Pretty BlockStmt where
+instance (Show a, Pretty a) => Pretty (BlockStmt a) where
   prettyPrec p (BlockStmt stmt) = prettyPrec p stmt
   prettyPrec p (LocalClass cd) = prettyPrec p cd
   prettyPrec p (LocalVars mods t vds) =
     hsep (map (prettyPrec p) mods) <+> prettyPrec p t <+> 
       hsep (punctuate comma $ map (prettyPrec p) vds) <> semi
 
-instance Pretty Stmt where
+instance (Show a, Pretty a) => Pretty (Stmt a) where
   prettyPrec p (StmtBlock block) = prettyPrec p block
   prettyPrec p (IfThen c th) =
     text "if" <+> parens (prettyPrec 0 c) $+$ prettyNestedStmt 0 th
@@ -258,20 +258,20 @@ instance Pretty Stmt where
   prettyPrec p (Labeled ident stmt) =
     prettyPrec p ident <> colon <+> prettyPrec p stmt
 
-instance Pretty Catch where
+instance (Show a, Pretty a) => Pretty (Catch a) where
   prettyPrec p (Catch fParam block) =
     hsep [text "catch", parens (prettyPrec p fParam)] $$ prettyPrec p block
 
-instance Pretty SwitchBlock where
+instance (Show a, Pretty a) => Pretty (SwitchBlock a) where
   prettyPrec p (SwitchBlock lbl stmts) =
     vcat (prettyPrec p lbl : map (nest 2 . prettyPrec p) stmts)
 
-instance Pretty SwitchLabel where
+instance (Show a, Pretty a) => Pretty (SwitchLabel a) where
   prettyPrec p (SwitchCase e) =
     text "case" <+> prettyPrec p e <> colon
   prettyPrec p Default = text "default:"
 
-instance Pretty ForInit where
+instance (Show a, Pretty a) => Pretty (ForInit a) where
   prettyPrec p (ForLocalVars mods t vds) =
     hsep $ map (prettyPrec p) mods ++
             prettyPrec p t: punctuate comma (map (prettyPrec p) vds)
@@ -282,7 +282,7 @@ instance Pretty ForInit where
 -----------------------------------------------------------------------
 -- Expressions
 
-instance Pretty Exp where
+instance (Show a, Pretty a) => Pretty (Exp a) where
   prettyPrec p (Lit l) = prettyPrec p l
   
   prettyPrec p (ClassLit mT) =
@@ -405,15 +405,15 @@ instance Pretty AssignOp where
     XorA    -> "^="
     OrA     -> "|="
 
-instance Pretty Lhs where
+instance (Show a, Pretty a) => Pretty (Lhs a) where
   prettyPrec p (NameLhs name) = prettyPrec p name
   prettyPrec p (FieldLhs fa) = prettyPrec p fa
   prettyPrec p (ArrayLhs ain) = prettyPrec p ain
 
-instance Pretty ArrayIndex where
+instance (Show a, Pretty a) => Pretty (ArrayIndex a) where
   prettyPrec p (ArrayIndex ref e) = prettyPrec p ref <> (hcat $ map (brackets . (prettyPrec p)) e)
 
-instance Pretty FieldAccess where
+instance (Show a, Pretty a) => Pretty (FieldAccess a) where
   prettyPrec p (PrimaryFieldAccess e ident) =
     prettyPrec p e <> char '.' <> prettyPrec p ident
   prettyPrec p (SuperFieldAccess ident) =
@@ -421,7 +421,7 @@ instance Pretty FieldAccess where
   prettyPrec p (ClassFieldAccess name ident) =
     prettyPrec p name <> text ".super." <> prettyPrec p ident
 
-instance Pretty MethodInvocation where
+instance (Show a, Pretty a) => Pretty (MethodInvocation a) where
   prettyPrec p (MethodCall name args) =
     prettyPrec p name <> ppArgs p args
 
@@ -441,7 +441,7 @@ instance Pretty MethodInvocation where
     hcat [prettyPrec p name, char '.', ppTypeParams p tArgs,
            prettyPrec p ident, ppArgs p args]
 
-instance Pretty ArrayInit where
+instance (Show a, Pretty a) => Pretty (ArrayInit a) where
   prettyPrec p (ArrayInit vInits) =
     braceBlock $ map (\v -> prettyPrec p v <> comma) vInits
     --braces $ hsep (punctuate comma (map (prettyPrec p) vInits))
@@ -520,7 +520,7 @@ ppResultType p (Just a) = prettyPrec p a
 -- Names and identifiers
 
 instance Pretty Name where
-  prettyPrec p (Name _ is) =
+  prettyPrec p (Name is) =
     hcat (punctuate (char '.') $ map (prettyPrec p) is)
 
 instance Pretty Ident where
@@ -529,7 +529,7 @@ instance Pretty Ident where
 
 -----------------------------------------------------------------------
 -- Help functionality
-prettyNestedStmt :: Int -> Stmt -> Doc
+prettyNestedStmt :: (Show a, Pretty a) => Int -> Stmt a -> Doc
 prettyNestedStmt prio p@(StmtBlock b) = prettyPrec prio p
 prettyNestedStmt prio p = nest 2 (prettyPrec prio p)
 
