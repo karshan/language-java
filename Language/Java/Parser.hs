@@ -34,7 +34,6 @@ module Language.Java.Parser (
 
 import Language.Java.Lexer ( L(..), Token(..), lexer)
 import Language.Java.Syntax
-import Language.Java.Pretty (pretty)
 
 import Text.Parsec hiding ( Empty )
 import Text.Parsec.Pos
@@ -1173,10 +1172,3 @@ colon     = tok Op_Colon
 semiColon = tok SemiColon
 period    = tok Period
 
-------------------------------------------------------------
-
-test = "public class Foo { }"
-testFile file = do
-  i <- readFile file
-  let r = parseCompilationUnit i
-  putStrLn$ either (("Parsing error:\n"++) . show) (show . pretty) r
