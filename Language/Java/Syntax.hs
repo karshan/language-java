@@ -3,7 +3,7 @@ module Language.Java.Syntax where
 import Control.Lens.TH
 import Data.Data
 import Text.Parsec.Pos
-#define DERIVE deriving (Eq,Ord,Show,Read,Typeable,Data)
+#define DERIVE deriving (Eq,Ord,Show,Typeable,Data)
 -----------------------------------------------------------------------
 -- Packages
 declarePrisms [d|
