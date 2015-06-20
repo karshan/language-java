@@ -137,10 +137,7 @@ declarePrisms [d|
                                               , annValue:: ElementValue }
                     | MarkerAnnotation        { annName :: Name }
       DERIVE
-    desugarAnnotation (MarkerAnnotation n)          = (n, [])
-    desugarAnnotation (SingleElementAnnotation n e) = (n, [(Ident Nothing "value", e)])
-    desugarAnnotation (NormalAnnotation n kv)       = (n, kv)
-    desugarAnnotation' = uncurry NormalAnnotation . desugarAnnotation
+
     -- | Annotations may contain  annotations or (loosely) expressions
     data ElementValue = EVVal VarInit
                       | EVAnn Annotation
@@ -234,13 +231,13 @@ declarePrisms [d|
     -- | A Java expression.
     data Exp
         -- | A literal denotes a fixed, unchanging value.
-        = Lit Literal
+        = Lit SourcePos Literal
         -- | A class literal, which is an expression consisting of the name of a class, interface, array,
         --   or primitive type, or the pseudo-type void (modelled by 'Nothing'), followed by a `.' and the token class.
-        | ClassLit (Maybe Type)
+        | ClassLit SourcePos (Maybe Type)
         -- | The keyword @this@ denotes a value that is a reference to the object for which the instance method
         --   was invoked, or to the object being constructed.
-        | This
+        | This SourcePos
         -- | Any lexically enclosing instance can be referred to by explicitly qualifying the keyword this.
         | ThisClass Name
         -- | A class instance creation expression is used to create new objects that are instances of classes.
@@ -402,9 +399,9 @@ declarePrisms [d|
     -----------------------------------------------------------------------
     -- Names and identifiers
     -- | A single identifier.
-    data Ident = Ident (Maybe SourcePos) String
+    data Ident = Ident SourcePos String
       DERIVE
     -- | A name, i.e. a period-separated list of identifiers.
-    data Name = Name SourcePos [Ident]
+    data Name = Name [Ident]
       DERIVE
   |]

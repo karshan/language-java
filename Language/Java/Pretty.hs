@@ -283,12 +283,12 @@ instance Pretty ForInit where
 -- Expressions
 
 instance Pretty Exp where
-  prettyPrec p (Lit l) = prettyPrec p l
+  prettyPrec p (Lit _ l) = prettyPrec p l
   
-  prettyPrec p (ClassLit mT) =
+  prettyPrec p (ClassLit _ mT) =
     ppResultType p mT <> text ".class"
 
-  prettyPrec _ This = text "this"
+  prettyPrec _ (This _) = text "this"
   
   prettyPrec p (ThisClass name) =
     prettyPrec p name <> text ".this"
@@ -520,7 +520,7 @@ ppResultType p (Just a) = prettyPrec p a
 -- Names and identifiers
 
 instance Pretty Name where
-  prettyPrec p (Name _ is) =
+  prettyPrec p (Name is) =
     hcat (punctuate (char '.') $ map (prettyPrec p) is)
 
 instance Pretty Ident where

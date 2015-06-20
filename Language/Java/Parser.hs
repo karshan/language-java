@@ -699,14 +699,15 @@ primaryNoNewArray = startSuff primaryNoNewArrayNPS primarySuffix
 
 primaryNoNewArrayNPS :: P Exp
 primaryNoNewArrayNPS =
-    Lit <$> literal <|>
-    const This <$> tok KW_This <|>
+    Lit <$> getPosition <*> literal <|>
+    (tok KW_This >> (This <$> getPosition)) <|>
     parens exp <|>
     -- TODO: These two following should probably be merged more
     (try $ do
+        pos <- getPosition
         rt <- resultType
         period >> tok KW_Class
-        return $ ClassLit rt) <|>
+        return $ ClassLit pos rt) <|>
     (try $ do
         n <- name
         period >> tok KW_This
@@ -1087,13 +1088,13 @@ name :: P Name
 name = do
     pos <- getPosition
     a <- seplist1 ident period
-    return $ Name pos a
+    return $ Name a
 
 ident :: P Ident
 ident = do
     pos <- getPosition
     javaToken $ \t -> case t of
-      IdentTok s -> Just $ Ident (Just pos) s
+      IdentTok s -> Just $ Ident pos s
       _ -> Nothing
 
 ------------------------------------------------------------
